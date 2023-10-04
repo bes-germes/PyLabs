@@ -1,18 +1,22 @@
 import argparse
 import json
-
+import os.path
 
 def storage_func(key=None, value=None):
     if value is None:
         with open("storage.json", "r") as write_file:
             result = json.load(write_file)
             if key in result.keys():
-                [print(num, end=", ") for num in result[key]]
+                print(*result[key], sep=", ") 
             else:
                 return "No such key"
     if key and value:
         d = {}
 
+        if not os.path.exists("storage.json"):
+            with open("storage.json", "w") as write_file:
+                json.dump(d, write_file)
+            
         with open("storage.json", "r+") as write_file:
             try:
                 d = json.loads(write_file.read())
@@ -42,4 +46,4 @@ parser.add_argument("--val", dest="value", type=str)
 
 args = parser.parse_args()
 
-print(storage_func(args.key_name, args.value))
+storage_func(args.key_name, args.value))
