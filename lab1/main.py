@@ -130,7 +130,7 @@ def map_power(list_of_numbers: list):
 
 # print(input_txt_and_count_words("test.txt"))
 
-l = [1, 2, 3, 4, 5, 6]
-print(to_power_numbers(l))
-print(list_comprehension(l))
-print(map_power(l))
+# l = [1, 2, 3, 4, 5, 6]
+# print(to_power_numbers(l))
+# print(list_comprehension(l))
+# print(map_power(l))
