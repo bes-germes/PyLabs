@@ -2,38 +2,18 @@ import copy
 import time
 import functools
 
-
 ##############lensort##################################
 def lensort_without_sort(list_of_words: list):
     new_list_of_words = copy.deepcopy(list_of_words)
 
-    if type(new_list_of_words) is list:
-        for word in new_list_of_words:
-            if type(word) is str:
-                continue
-            else:
-                return "only for str"
+    for i in range(len(new_list_of_words) - 1):
+        for j in range(len(new_list_of_words) - i - 1):
+            if len(new_list_of_words[j]) > len(new_list_of_words[j + 1]):
+                new_list_of_words[j], new_list_of_words[j + 1] = (
+                    new_list_of_words[j + 1],
+                    new_list_of_words[j],
+                )
 
-        for i in range(len(new_list_of_words) - 1):
-            for j in range(len(new_list_of_words) - i - 1):
-                if len(new_list_of_words[j]) > len(new_list_of_words[j + 1]):
-                    new_list_of_words[j], new_list_of_words[j + 1] = (
-                        new_list_of_words[j + 1],
-                        new_list_of_words[j],
-                    )
-
-        return new_list_of_words
-    else:
-        return "Wrong arg"
-
-
-def lensort_with_sorted(list_of_words: list):
-    return sorted(list_of_words)
-
-
-def lensort_with_sort(list_of_words: list):
-    new_list_of_words = copy.deepcopy(list_of_words)
-    new_list_of_words.sort()
     return new_list_of_words
 
 
@@ -51,22 +31,14 @@ def lensort_with_lambda_and_sorted(list_of_words: list):
 
 
 def unique(list_of_something: list):
-    new_set = set(list_of_something)
-    new_list = []
-    for i in new_set:
-        new_list.append(i)
-    return new_list
+    return list(set(list_of_something))
 
 
 #########my_enumerate##################
 
 
 def my_enumerate(list_of_something: list):
-    new_list_idx = []
-    for i in range(len(list_of_something)):
-        new_list_idx.append(i)
-    list_zip = list(zip(new_list_idx, list_of_something))
-    return list_zip
+    return list(zip(range(len(list_of_something)), list_of_something))
 
 
 def input_txt_and_count_words(file_name: str):
@@ -125,7 +97,7 @@ def map_power(list_of_numbers: list):
 # print(unique(l))
 # print(l)
 
-# l = ["a", "b", "c"]
+# l = ["a", "b", "c", "sdfsdf", "bla"]
 # print(my_enumerate(l))
 
 # print(input_txt_and_count_words("test.txt"))
