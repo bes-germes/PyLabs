@@ -3,7 +3,7 @@ import time
 import functools
 
 ##############lensort##################################
-def lensort_without_sort(list_of_words: list):
+def lensort_without_sort(list_of_words: list[str]):
     new_list_of_words = copy.deepcopy(list_of_words)
 
     for i in range(len(new_list_of_words) - 1):
