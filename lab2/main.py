@@ -47,7 +47,10 @@ class my_vector:
             y = self.y * other
             return my_vector(x, y)
         elif (type(other) == my_vector):
-            return self.x * other.x + self.y * other.y  
+            return self.x * other.x + self.y * other.y
+        
+    def __rmul__(self, other):
+        return  self*other
         
 
 class my_figure:
@@ -262,7 +265,8 @@ class my_logger:
     
 
 
-# new_vec = my_vector(3123, 677)
+new_vec = my_vector(3123, 677)
+print(2*new_vec)
 # new_vec1 = my_vector(654, 234)
 # print(new_vec.x)
 # new_fig = my_figure()
