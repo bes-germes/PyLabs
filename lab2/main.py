@@ -1,10 +1,11 @@
 import math
 import time
 from datetime import datetime
+from abc import ABC, abstractmethod
 import os.path
 
 
-class my_vector:
+class MyVector:
     def __init__(self, x, y):
         self.__x = x
         self.__y = y
@@ -34,12 +35,12 @@ class my_vector:
     def __add__(self, other_vec):
         x = self.x + other_vec.x
         y = self.y + other_vec.y
-        return my_vector(x, y)
+        return MyVector(x, y)
 
     def __sub__(self, other_vec):
         x = self.x - other_vec.x
         y = self.y - other_vec.y
-        return my_vector(x, y)
+        return MyVector(x, y)
 
     def __eq__(self, other_vec):
         return self.x == other_vec.x and self.y == other_vec.y
@@ -51,24 +52,25 @@ class my_vector:
         if (type(other) == int):
             x = self.x * other
             y = self.y * other
-            return my_vector(x, y)
-        elif (type(other) == my_vector):
+            return MyVector(x, y)
+        elif (type(other) == MyVector):
             return self.x * other.x + self.y * other.y
 
     def __rmul__(self, other):
         return self * other
 
 
-class my_figure:
-
+class MyFigure(ABC):
+    @abstractmethod
     def info(self):
         return "base"
 
+    @abstractmethod
     def square(self):
         return "tyt pydet ploshad'"
 
 
-class my_rectangle(my_figure):
+class MyRectangle(MyFigure):
     def __init__(self, width, height):
         self.__width = width
         self.__height = height
@@ -102,8 +104,8 @@ class my_rectangle(my_figure):
         return self.__width * self.__height
 
 
-class my_triangle(my_figure):
-    def __init__(self, vec1: my_vector, vec2: my_vector):
+class MyTriangle(MyFigure):
+    def __init__(self, vec1: MyVector, vec2: MyVector):
         self.__vec1 = vec1
         self.__vec2 = vec2
 
@@ -130,7 +132,7 @@ class my_triangle(my_figure):
         return (self.vec1.x * self.vec2.y - self.vec1.y * self.vec2.x) / 2
 
 
-class my_cyrcle(my_figure):
+class MyCyrcle(MyFigure):
     def __init__(self, r):
         self.__r = r
 
@@ -149,11 +151,12 @@ class my_cyrcle(my_figure):
         return math.pi * (self.r ** 2)
 
 
-class timer:
+class Timer:
     def __init__(self, my_function):
         self.my_function = my_function
         self.starttime = 0
         self.runtime = 0
+        self.infoList = []
         self.name = ""
 
     @property
@@ -166,27 +169,29 @@ class timer:
         self.runtime = time.perf_counter() - self.starttime
         now = datetime.now()
         current_time = now.strftime("%H:%M:%S")
-        print(f"{current_time}: function {self.my_function.__name__} called with arguments {args}----timer")
+        self.infoList.append(
+            f"{current_time}: function {self.my_function.__name__} called with arguments {args}----timer")
         return result
         # print(f"{self.runtime:.10f}")
 
 
-class HTML_printer:
+class HtmlPrinter:
     def __init__(self, my_function):
         self.my_function = my_function
+        self.infoList = []
 
     def __call__(self, *args, **kwargs):
         result = self.my_function(*args, **kwargs)
         now = datetime.now()
         current_time = now.strftime("%H:%M:%S")
-        print(
+        self.infoList.append(
             f"{current_time}: function {self.my_function.__name__} called with arguments {args}----HTML_printer")
         print(f"<html><body>{self.my_function.runtime:.10f}</body></html>")
         return result
 
 
-@HTML_printer
-@timer
+@HtmlPrinter
+@Timer
 def to_power_numbers(list_of_numbers: list):
     j = 0
     for i in list_of_numbers:
@@ -195,27 +200,26 @@ def to_power_numbers(list_of_numbers: list):
     return list_of_numbers
 
 
-@HTML_printer
-@timer
+@HtmlPrinter
+@Timer
 def list_comprehension(list_of_numbers: list):
     squares = [n * n for n in list_of_numbers]
     return squares
 
 
-@HTML_printer
-@timer
+@HtmlPrinter
+@Timer
 def map_power(list_of_numbers: list):
     return list(map(lambda x: x * x, list_of_numbers))
 
 
-class my_logger(object):
-    def __init__(self, status: str, message: str):
-        self.__status = status
-        self.__message = message
+class MyLogger(object):
+    def __init__(self, path: str):
+        self.write_file = open(path, "a", encoding='utf-8')
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, 'instance'):
-            cls.instance = super(my_logger, cls).__new__(cls)
+            cls.instance = super(MyLogger, cls).__new__(cls)
         return cls.instance
 
     @property
@@ -239,52 +243,26 @@ class my_logger(object):
         current_time = now.strftime("%H:%M:%S")
         return current_time
 
-    def write_to_log(self):
-        # if os.path.exists("log.txt"):
-        with open("log.txt", "a", encoding='utf-8') as write_file:
-            write_file.write(f"[{self.status}] {self.get_cur_time()}: {self.message},\n")
-        self.print_from_file()
-        # else:
-        #     self.make_new_file()
+    def __write_to_log(self, message: str, status: str):
+        self.write_file.write(f"[{status}] {self.get_cur_time()}: {message},\n")
 
-    def make_new_file(self):
-        open("log.txt", "w", encoding='utf-8').close()
-        self.write_to_log()
-
-    def print_from_file(self):
-        with open("log.txt", "r", encoding="utf-8") as f:
-            text = f.readlines()
-            for line in text:
-                print(line, end='')
+    def __del__(self):
+        self.write_file.close()
 
     def debug(self, message: str):
-        self.__status = "debug"
-        self.__message = message
-        self.write_to_log()
-
+        self.__write_to_log(message, "debug")
 
     def info(self, message: str):
-        self.__status = "indo"
-        self.__message = message
-        self.write_to_log()
-
+        self.__write_to_log(message, "indo")
 
     def warn(self, message: str):
-        self.__status = "warn"
-        self.__message = message
-        self.write_to_log()
-
+        self.__write_to_log(message, "warn")
 
     def error(self, message: str):
-        self.__status = "error"
-        self.__message = message
-        self.write_to_log()
-
+        self.__write_to_log(message, "error")
 
     def critical(self, message: str):
-        self.__status = "critical"
-        self.__message = message
-        self.write_to_log()
+        self.__write_to_log(message, "critical")
 
 
 if __name__ == "__main__":
@@ -297,12 +275,12 @@ if __name__ == "__main__":
     # new_tri = my_triangle(new_vec, new_vec1)
     # new_cyr = my_cyrcle(2)
     # print(new_cyr.info())
-
+    #
     # l = [1, 2, 3, 4, 5, 5344234234234682364482348247422345]
     # to_power_numbers(l)
     # list_comprehension(l)
     # map_power(l)
 
-    new_log = my_logger("init", "init")
+    new_log = MyLogger("log.txt")
 
     new_log.critical("dfgdgd")
