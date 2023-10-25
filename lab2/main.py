@@ -56,6 +56,9 @@ class MyVector:
         elif (type(other) == MyVector):
             return self.x * other.x + self.y * other.y
 
+    def length(self):
+        return (self.x ** 2 + self.y ** 2) ** 0.5
+
     def __rmul__(self, other):
         return self * other
 
@@ -266,8 +269,8 @@ class MyLogger(object):
 
 
 if __name__ == "__main__":
-    # new_vec = my_vector(3123, 677)
-    # print(2 * new_vec)
+    new_vec = MyVector(1, 2)
+    print(new_vec.length())
     # new_vec1 = my_vector(654, 234)
     # print(new_vec.x)
     # new_fig = my_figure()
