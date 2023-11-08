@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 from abc import ABC, abstractmethod
 import os.path
+from typing import Any
 
 
 class MyVector:
@@ -49,15 +50,15 @@ class MyVector:
         return not self == other_vec
 
     def __mul__(self, other):
-        if (type(other) == int):
+        if type(other) == int:
             x = self.x * other
             y = self.y * other
             return MyVector(x, y)
-        elif (type(other) == MyVector):
+        elif type(other) == MyVector:
             return self.x * other.x + self.y * other.y
 
     def length(self):
-        return (self.x ** 2 + self.y ** 2) ** 0.5
+        return (self.x**2 + self.y**2) ** 0.5
 
     def __rmul__(self, other):
         return self * other
@@ -151,17 +152,33 @@ class MyCyrcle(MyFigure):
         return "cyrcle"
 
     def square(self):
-        return math.pi * (self.r ** 2)
+        return math.pi * (self.r**2)
 
 
-class Timer:
+class BaseDecor:
     def __init__(self, my_function):
         self.my_function = my_function
-        self.starttime = 0
-        self.runtime = 0
-        self.infoList = []
-        self.name = ""
 
+        self.infoList = list()
+
+    # @abstractmethod
+    # def __call__(self, *args: Any, **kwds: Any) -> Any:
+    #     return super().__call__(*args, **kwds)
+
+    def _logInfo(self, *args):
+        now = datetime.now()
+        current_time = now.strftime("%H:%M:%S")
+        self.infoList.append(
+            f"{current_time}: function {self.my_function.__name__} called with arguments {args}"
+        )
+        print(self.infoList)
+
+
+class Timer(BaseDecor):
+    # self.starttime = 0
+    # self.runtime = 0
+    # self.name = ""
+    # /
     @property
     def __name__(self):
         return self.my_function.__name__
@@ -170,25 +187,19 @@ class Timer:
         self.starttime = time.perf_counter()
         result = self.my_function(*args, **kwargs)
         self.runtime = time.perf_counter() - self.starttime
-        now = datetime.now()
-        current_time = now.strftime("%H:%M:%S")
-        self.infoList.append(
-            f"{current_time}: function {self.my_function.__name__} called with arguments {args}----timer")
+        self._logInfo(*args)
         return result
+
         # print(f"{self.runtime:.10f}")
 
 
-class HtmlPrinter:
-    def __init__(self, my_function):
-        self.my_function = my_function
-        self.infoList = []
+class HtmlPrinter(BaseDecor):
+    # def __init__(self, my_function):
+    #     self.my_function = my_function
 
     def __call__(self, *args, **kwargs):
         result = self.my_function(*args, **kwargs)
-        now = datetime.now()
-        current_time = now.strftime("%H:%M:%S")
-        self.infoList.append(
-            f"{current_time}: function {self.my_function.__name__} called with arguments {args}----HTML_printer")
+        self._logInfo(*args)
         print(f"<html><body>{self.my_function.runtime:.10f}</body></html>")
         return result
 
@@ -197,6 +208,7 @@ class HtmlPrinter:
 @Timer
 def to_power_numbers(list_of_numbers: list):
     j = 0
+    print(list_of_numbers)
     for i in list_of_numbers:
         list_of_numbers[j] *= i
         j += 1
@@ -218,10 +230,10 @@ def map_power(list_of_numbers: list):
 
 class MyLogger(object):
     def __init__(self, path: str):
-        self.write_file = open(path, "a", encoding='utf-8')
+        self.write_file = open(path, "a", encoding="utf-8")
 
     def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, 'instance'):
+        if not hasattr(cls, "instance"):
             cls.instance = super(MyLogger, cls).__new__(cls)
         return cls.instance
 
@@ -279,11 +291,11 @@ if __name__ == "__main__":
     # new_cyr = my_cyrcle(2)
     # print(new_cyr.info())
     #
-    # l = [1, 2, 3, 4, 5, 5344234234234682364482348247422345]
-    # to_power_numbers(l)
-    # list_comprehension(l)
-    # map_power(l)
+    l = [1, 2, 3, 4, 5, 5344234234234682364482348247422345]
+    to_power_numbers(l)
+    list_comprehension(l)
+    map_power(l)
 
-    new_log = MyLogger("log.txt")
+    # new_log = MyLogger("log.txt")
 
-    new_log.critical("dfgdgd")
+    # new_log.critical("dfgdgd")
