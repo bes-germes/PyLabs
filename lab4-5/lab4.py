@@ -1,99 +1,156 @@
+# Разработать сервер REST API для учёта лабораторных работ студентов с использованием библиотеки aiohttp.
+# Сервер должен хранить следующие данные о лабораторных работах:
+#   Название лабораторной (обязательно, уникальное поле)
+#   Дедлайн (дата в формате день.месяц. год) (обязательно)
+#   Описание (опционально)
+#   Список студентов, сдавших данную лабораторную работу (опционально)
+# Сервер должен поддерживать запросы:
+#   Запрос для внесения лабораторной работы в расписание на http://<адрес>:<port>/labs
+#      На данном этапе лабораторная работа ещё не выдана, и список студентов пуст.
+#      В ответе возвращается URL для дальнейшей работы с данной лабораторной: http://<адрес>:<port>/labs/<название>
+#   Запрос для изменения всех полей лабораторной работы, кроме её названия, на http://<адрес>:<port>/labs/<название>.
+#      Название изменять нельзя
+#   Запрос для удаления лабораторной работы на http://<адрес>:<port>/labs/<название>
+#   Запрос для получения данных о лабораторной работе на http://<адрес>:<port>/labs/<название>
+#   Запрос для получения данных обо всех лабораторных работах на http://<адрес>:<port>/labs
+
 from aiohttp import web
 import json
 import datetime
+import multidict
 
-labs = dict()
 dateformat = '%d.%m.%Y'
 
-def check_date_format(date):
+
+class Lab:
+    """Лабораторная работа"""
+
+    def __init__(self, name, date):
+        self.__name = name  # Название лабораторной (обязательно, уникальное поле)
+        self.date = datetime.datetime.strptime(date, dateformat)  # Дедлайн (дата в формате день.месяц. год)
+        self.description = None  # Описание (опционально)
+        self.students = None  # Список студентов, сдавших данную лабораторную работу (опционально)
+
+    @property
+    def name(self):
+        """Неизменяемое имя"""
+        return self.__name
+
+    @staticmethod
+    def check_date_format(date):
         """Проверить формат даты"""
         try:
-            datetime.datetime.strptime(date, dateformat)
+            datetime.datetime.strptime(date, dateformat)  # Дедлайн (дата в формате день.месяц. год)
             return True
         except Exception as inst:
-            print(type(inst))  
-            print(inst)
+            print(type(inst))  # the exception type
+            print(inst)  # __str__ allows args to be printed directly,
             return False
-        
-def add_lab(lab_name):
 
-    current_date = datetime.datetime.now()
-    lab = {
-        "deadline": str(current_date.strftime(dateformat))
-    }
-    labs[lab_name] = lab
- 
-def is_lab_exist(lab_name):
-    if labs.get(lab_name):
-        return True
-    else:
-        return False
+    def get_dict(self):
+        """Получить в виде словаря для отправки по сети"""
+        res = {'name': self.__name, 'date': self.date.strftime(dateformat)}
+        if self.description is not None:
+            res['description'] = self.description
+        if self.students is not None:
+            res['students'] = ','.join(self.students)
+        return res
 
-async def view_all_labs(request):
-    response_obj = { 'status' : 'success', 'labs': labs}
-    return web.Response(text=json.dumps(response_obj), status=200)
+    def edit_lab(self, new_lab):
+        """Изменить лабораторнуб работу"""
+        if 'date' in new_lab:  # todo проверка формата дата
+            self.date = datetime.datetime.strptime(new_lab['date'], dateformat)  # Хранить в виде datetime для удобства
+        if 'description' in new_lab:
+            self.description = new_lab['description']
+        if 'students' in new_lab:
+            self.students = new_lab['students'].strip().split(',')  # Хранить в виде списка для удобства
 
-async def new_lab(request):
-    try:
 
-        lab = request.query['lab_name']
+class Server:
+    """Класс сервера"""
 
-        print("Creating new lab with name: " , lab)
-        if not is_lab_exist(lab):
-            add_lab(lab)
-            response_obj = { 'status' : 'success', 'link':  f'http://localhost:8080/labs/{lab}'}
-        else: 
-            response_obj = { 'status' : 'faild', 'message':  f'already exist'}
+    def __init__(self):
+        self.app = web.Application()
+        self.url = "http://localhost:8080"
+        self.labs = dict()
 
-        return web.Response(text=json.dumps(response_obj), status=200)
-    except Exception as e:
+        routes = web.RouteTableDef()
+        self.app.router.add_post('/labs', self.add_lab)
+        self.app.router.add_get('/labs', self.get_labs)
+        self.app.router.add_get('/labs/{lab_name}', self.get_lab)
+        self.app.router.add_patch('/labs/{lab_name}', self.edit_lab)
+        self.app.router.add_delete('/labs/{lab_name}', self.delete_lab)
 
-        response_obj = { 'status' : 'failed', 'reason': str(e) }
+    # @routes.post('/labs') # почему-то как метод класса не работает ;(
+    async def add_lab(self, request):
+        """Добавление лабораторной на сервер"""
+        try:
+            req = await request.json()
+        except Exception as inst:
+            print(type(inst))  # the exception type
+            print(inst.args)  # arguments stored in .args
+            print(inst)  # __str__ allows args to be printed directly,
+            return web.Response(status=400, text=str(inst))
 
-        return web.Response(text=json.dumps(response_obj), status=500)
+        if ('name' not in req) or ('date' not in req):
+            return web.Response(status=400, text="Недостаточно аргументов для создания лабораторной работы")
 
-async def get_lab_info(request):
-        name = request.match_info.get('lab_name')
-        if labs.get(name):
-            response_obj = { 'status' : 'success', 'labs': labs}
-            return web.Response(text=json.dumps(response_obj), status=200)
+        if req['name'] in self.labs:
+            # лабораторная уже существует
+            return web.Response(status=409, text="Лабораторная уже существует")
+
+        if not Lab.check_date_format(req['date']):
+            # неправильный формат даты
+            return web.Response(status=400, text="Некорректный формат даты")
+
+        self.labs[req['name']] = Lab(name=req['name'], date=req['date'])
+        return web.Response(status=201,
+                            headers=multidict.MultiDict({'Location': "{}/{}".format(self.url, req['name'])}))
+
+    async def get_labs(self, request):
+        """Получить все лабораторные"""
+        resp = dict()
+        for i in self.labs:
+            resp[i] = self.labs[i].get_dict()
+        return web.json_response(status=200, data=resp)
+
+    async def get_lab(self, request):
+        """Получить конкретную лабораторную"""
+        lab_name = request.match_info['lab_name']
+        if lab_name not in self.labs:
+            return web.Response(status=404, text="Лабораторная работа не найдена")
         else:
-            response_obj = { 'status' : 'failed', 'message':  f"doesn't exist"}
-            return web.Response(text=json.dumps(response_obj), status=500)
-        
-async def edit_lab(request):
-    name = request.match_info.get('lab_name')
-    deadline = request.query.get('deadline')
+            return web.json_response(status=200, data=self.labs[lab_name].get_dict())
 
-    if check_date_format(deadline):      
-        if labs.get(name):
-            labs[name]['deadline'] = deadline
-            response_obj = { 'status' : 'success', 'labs': labs}
-            return web.Response(text=json.dumps(response_obj), status=200)
-        else: 
-            response_obj = { 'status' : 'failed', 'message':  f"doesn't exist"}
-            return web.Response(text=json.dumps(response_obj), status=500)
-    else:
-        response_obj = { 'status' : 'failed', 'message':  f"wrong data format"}
-        return web.Response(text=json.dumps(response_obj), status=500)
+    async def edit_lab(self, request):
+        """Редактирование лабораторной"""
+        lab_name = request.match_info['lab_name']
+        if lab_name not in self.labs:
+            return web.Response(status=404, text="Лабораторная работа не найдена")
+        try:
+            req = await request.json()
 
-async def delete_lab(request):
-    name = request.match_info.get('lab_name')
-    if labs.get(name):
-        del labs[name]
-        response_obj = { 'status' : 'success', 'labs': labs}
-        return web.Response(text=json.dumps(response_obj), status=200)
-    else:
-        response_obj = { 'status' : 'failed', 'message':  f"smt wrong"}
-        return web.Response(text=json.dumps(response_obj), status=500)
-        
+            if ('date' in req) and not (Lab.check_date_format(req['date'])):
+                return web.Response(status=400, text="Неверный формат даты")
+
+            self.labs[lab_name].edit_lab(req)
+            return web.json_response(status=200, text="Лабораторная изменена")
+        except Exception as inst:
+            print(type(inst))  # the exception type
+            print(inst.args)  # arguments stored in .args
+            print(inst)  # __str__ allows args to be printed directly,
+            return web.Response(status=400, text=str(inst))
+
+    async def delete_lab(self, request):
+        """Удалить лабораторную"""
+        lab_name = request.match_info['lab_name']
+        if lab_name not in self.labs:
+            return web.Response(status=404, text="Лабораторная работа не найдена")
+        else:
+            del self.labs[lab_name]
+            return web.Response(status=200, text="Лабораторная удалена")
 
 
 if __name__ == '__main__':
-    app = web.Application()
-    app.router.add_get('/labs', view_all_labs) 
-    app.router.add_post('/labs', new_lab) 
-    app.router.add_get('/labs/{lab_name}', get_lab_info) 
-    app.router.add_patch('/labs/{lab_name}', edit_lab)
-    app.router.add_delete('/labs/{lab_name}', delete_lab)
-    web.run_app(app)
+    serv = Server()
+    web.run_app(serv.app)
